@@ -1,3 +1,15 @@
+Template.postEdit.onCreated(function() {
+  Session.set('postSubmitErrors', {});
+});
+Template.postEdit.helpers({
+  errorMessage: function(field) {
+    return Session.get('postSubmitErrors')[field];
+  },
+  errorClass: function (field) {
+    return !!Session.get('postSubmitErrors')[field] ? 'has-error' : '';
+  }
+});
+
 Template.postEdit.events({
   'submit form': function(e) {
     e.preventDefault();
@@ -6,15 +18,18 @@ Template.postEdit.events({
       url: $(e.target).find('[name=url]').val(),
       title: $(e.target).find('[name=title]').val()
     };
-    var postWithSameLink = Posts.findOne({url: postProperties.url});
+
+    var errors = validatePost(postProperties);
+    if (errors.title || errors.url) return Session.set('postSubmitErrors', errors);
+
+    var postWithSameLink = Posts.findOne({_id: {$ne: currentPostId}, url: postProperties.url});
     if (postWithSameLink) {
-      alert('url is already exists');
-      return;
+      return throwError('url is already exists');
     }
     Posts.update(currentPostId, {$set: postProperties}, function(error) {
       if (error) {
       // 向用户显示错误信息
-        alert(error.reason);
+        throwError(error.reason);
       } else {
         Router.go('postPage', {_id: currentPostId});
       }
@@ -31,3 +46,4 @@ Template.postEdit.events({
       }
     }
  });
+
